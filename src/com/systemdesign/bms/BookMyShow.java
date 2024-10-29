@@ -1,7 +1,7 @@
 package com.systemdesign.bms;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -12,22 +12,21 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class BookMyShow {
 
-    List<Theatre> theatreList;
-    List<Movie> movieList;
+    private TheatreService theatreService;
+
+    private MovieService movieService;
 
     private final Lock lock = new ReentrantLock();
 
     BookMyShow() {
-        this.theatreList = new ArrayList<>();
-        this.movieList = new ArrayList<>();
+        this.theatreService = new TheatreService();
+        this.movieService = new MovieService();
     }
 
     public void initialize() {
         // Creating Movies
         Movie movie1 = new Movie("BHOOL BHULAIYA", "BHOOL BHULAIYA HORROR", City.BANGALORE);
         Movie movie2 = new Movie("Fast and Furious 3", "Fast and Furious 3", City.BANGALORE);
-        this.movieList.add(movie1);
-        this.movieList.add(movie2);
 
 
         // Creating Seats, Screens & Theatres
@@ -49,7 +48,10 @@ public class BookMyShow {
         theatre1.addShow(show);
         theatre1.addShow(show1);
 
-        this.theatreList.add(theatre1);
+
+        this.theatreService.addTheatreToCity(theatre1.getCity(), theatre1);
+        this.movieService.addMovieToCity(movie1.getCity(), movie1);
+        this.movieService.addMovieToCity(movie2.getCity(), movie2);
     }
 
     public void startBooking() {
@@ -57,14 +59,12 @@ public class BookMyShow {
         ExecutorService executors = Executors.newFixedThreadPool(2);
         try {
             Future<Void> future1 = executors.submit(() -> {
-                createBooking(this.theatreList.get(0), this.theatreList.get(0).getShows().get(0)
-                        , "A1");
+                createBooking("A1");
                 return null;
             });
 
             Future<Void> future2 = executors.submit(() -> {
-                createBooking(this.theatreList.get(0), this.theatreList.get(0).getShows().get(0)
-                        , "A1");
+                createBooking("A1");
                 return null;
             });
 
@@ -82,7 +82,39 @@ public class BookMyShow {
 //        createBooking(this.theatreList.get(0), this.theatreList.get(0).getShows().get(1), "A1");
     }
 
-    private void createBooking(Theatre theatre, Show show, String seatId) {
+    private void createBooking(String seatId) {
+
+        // Fetching cities
+        List<City> cityList = theatreService.getCities();
+
+        if (cityList.isEmpty()) {
+            System.out.println("No cities exist where theatres are available");
+            return;
+        }
+
+        // Suppose user chooses Bangalore
+        List<Movie> movieList = movieService.getMovieByCity(cityList.get(0));
+
+        if (movieList.isEmpty()) {
+            System.out.println("No movie exist in your city " + cityList.get(0));
+            return;
+        }
+
+        //Suppose user chooses Bahubali
+
+        Map<Theatre, List<Show>> theatreListMap = theatreService.getShowsBasedOnMovie(movieList.get(0).getCity()
+                , movieList.get(0));
+
+        if (theatreListMap.isEmpty()) {
+            System.out.println("No shows exist for movie " + movieList.get(0));
+        }
+
+        // Suppose user chose INOX theatre and show 1
+        Theatre theatre = theatreService.getCityTheatreMap().get(cityList.get(0)).get(0);
+        bookSeat(theatre, theatreListMap.get(theatre).get(0), seatId);
+    }
+
+    private void bookSeat(Theatre theatre, Show show, String seatId) {
         Seat seat = show.getScreen().getSeatById(seatId);
         if (Objects.isNull(seat))
         {
