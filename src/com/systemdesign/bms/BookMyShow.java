@@ -56,7 +56,7 @@ public class BookMyShow {
 
     public void startBooking() {
 
-        ExecutorService executors = Executors.newFixedThreadPool(2);
+        ExecutorService executors = Executors.newFixedThreadPool(4);
         try {
             Future<Void> future1 = executors.submit(() -> {
                 createBooking("A1");
@@ -68,8 +68,20 @@ public class BookMyShow {
                 return null;
             });
 
+            Future<Void> future3 = executors.submit(() -> {
+                createBooking("A2");
+                return null;
+            });
+
+            Future<Void> future4 = executors.submit(() -> {
+                createBooking("A2");
+                return null;
+            });
+
             future1.get();
             future2.get();
+            future3.get();
+            future4.get();
         } catch (ExecutionException | InterruptedException e) {
             System.out.println(e.getMessage());
         } finally {
@@ -82,7 +94,7 @@ public class BookMyShow {
 //        createBooking(this.theatreList.get(0), this.theatreList.get(0).getShows().get(1), "A1");
     }
 
-    private void createBooking(String seatId) {
+    private void createBooking(String seatId) throws InterruptedException {
 
         // Fetching cities
         List<City> cityList = theatreService.getCities();
@@ -114,7 +126,7 @@ public class BookMyShow {
         bookSeat(theatre, theatreListMap.get(theatre).get(0), seatId);
     }
 
-    private void bookSeat(Theatre theatre, Show show, String seatId) {
+    private void bookSeat(Theatre theatre, Show show, String seatId) throws InterruptedException {
         Seat seat = show.getScreen().getSeatById(seatId);
         if (Objects.isNull(seat))
         {
@@ -122,14 +134,14 @@ public class BookMyShow {
             return;
         }
 
-        lock.lock();
-        if (show.checkIfSeatAlreadyBooked(seatId)) {
-            System.out.println("SeatId " + seatId + " already booked, please try choosing another seat");
-            return;
-        }
+        synchronized (seatId) {
+            if (show.checkIfSeatAlreadyBooked(seatId)) {
+                System.out.println("SeatId " + seatId + " already booked, please try choosing another seat");
+                return;
+            }
 
-        show.addNewBooking(seat);
-        lock.unlock();
+            show.addNewBooking(seat);
+        }
         prepareBookingReceipt(theatre, show, seat);
     }
 
