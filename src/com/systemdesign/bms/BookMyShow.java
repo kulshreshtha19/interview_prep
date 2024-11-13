@@ -16,8 +16,6 @@ public class BookMyShow {
 
     private MovieService movieService;
 
-    private final Lock lock = new ReentrantLock();
-
     BookMyShow() {
         this.theatreService = new TheatreService();
         this.movieService = new MovieService();
@@ -126,7 +124,7 @@ public class BookMyShow {
         bookSeat(theatre, theatreListMap.get(theatre).get(0), seatId);
     }
 
-    private void bookSeat(Theatre theatre, Show show, String seatId) throws InterruptedException {
+    private void bookSeat(Theatre theatre, Show show, String seatId) {
         Seat seat = show.getScreen().getSeatById(seatId);
         if (Objects.isNull(seat))
         {
